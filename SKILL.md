@@ -22,8 +22,6 @@ description: |
 | 🎵 抖音 | **必须** | undetected_chromedriver + Cookie | 短视频 |
 | 📺 B 站 | **必须**（字幕/评论） | 公开 API + Cookie | 中长视频 |
 
-> **Cookie 存储**：所有 Cookie 统一存放在 `~/.aone_copilot/skills/.env` 文件中，格式为 `XHS_COOKIE=xxx`、`DOUYIN_COOKIE=xxx` 和 `BILI_COOKIE=xxx`。脚本会自动读取。
->
 > **Cookie 获取方式**：当检测到对应平台 Cookie 缺失时，脚本会**自动打开浏览器**让用户登录：
 > - 自动弹出 Chrome 浏览器，打开对应平台的登录页面
 > - 用户在浏览器中完成登录（支持扫码、账号密码等方式）

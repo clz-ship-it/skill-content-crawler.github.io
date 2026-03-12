@@ -37,13 +37,10 @@ pip install selenium undetected-chromedriver demucs openai-whisper torch torchau
 
 ### 2. 配置 Cookie
 
-将各平台 Cookie 存放在 `~/.aone_copilot/skills/.env`：
-
-```
-BILI_COOKIE=你的B站Cookie
-DOUYIN_COOKIE=你的抖音Cookie
-XHS_COOKIE=你的小红书Cookie
-```
+脚本会自动处理 Cookie：
+- 如果在配置区填入了 Cookie，直接使用
+- 如果有缓存的 Cookie，自动加载
+- 如果都没有，自动弹出浏览器让你登录，登录后自动提取并缓存
 
 ### 3. 修改配置并运行
 
