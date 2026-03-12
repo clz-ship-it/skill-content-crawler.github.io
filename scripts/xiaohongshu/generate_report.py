@@ -327,8 +327,8 @@ def generate_report(data: Dict[str, Any], keyword: str) -> str:
 
     return "\n".join(report_lines)
 
-def generate_and_save_report(json_path: str, output_dir: str = None) -> str:
-    """生成报告并保存到文件，返回报告文件路径"""
+def generate_and_save_report(json_path: str, output_dir: str = None):
+    """生成报告并保存到文件，返回 (报告文件路径, 报告内容) 元组"""
     data = load_data(json_path)
     keyword = data.get("keyword", extract_keyword_from_filename(json_path))
 
@@ -345,7 +345,7 @@ def generate_and_save_report(json_path: str, output_dir: str = None) -> str:
     with open(report_path, "w", encoding="utf-8") as report_file:
         report_file.write(report_content)
 
-    return report_path
+    return report_path, report_content
 
 if __name__ == "__main__":
     import sys

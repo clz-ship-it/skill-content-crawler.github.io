@@ -290,12 +290,23 @@ def run(config=None):
 
     # Step 8: 生成分析报告
     print(f"\n[Step 7] 生成爆款分析报告...")
+    report_content = None
     try:
-        report_path = generate_and_save_report(str(results_path), str(output_dir))
+        report_path, report_content = generate_and_save_report(str(results_path), str(output_dir))
         print(f"  ✓ 报告已生成：{report_path}")
     except Exception as report_error:
         print(f"  ✗ 报告生成失败：{report_error}")
         report_path = None
+
+    # 将报告内容直接输出到控制台，方便 AI 读取并展示给用户
+    if report_content:
+        print(f"\n{'=' * 70}")
+        print("  📋 以下是完整的分析报告内容：")
+        print(f"{'=' * 70}\n")
+        print(report_content)
+        print(f"\n{'=' * 70}")
+        print("  📋 报告内容结束")
+        print(f"{'=' * 70}")
 
     print(f"\n{'=' * 70}")
     print(f"  ✅ 抖音爆款拆解全流程完成！")

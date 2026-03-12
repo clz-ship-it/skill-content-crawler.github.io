@@ -307,9 +307,18 @@ def run(config=None):
     print(f"\n[Step 4] 生成爆款分析报告...\n")
 
     from generate_report import generate_and_save_report
-    report_path = generate_and_save_report(output_path, output_dir=os.path.join(script_dir, "output", "report"))
+    report_path, report_content = generate_and_save_report(output_path, output_dir=os.path.join(script_dir, "output", "report"))
     step4_elapsed = time.time() - step4_start
     print(f"  ✅ 报告已生成: {report_path} (耗时 {step4_elapsed:.1f}s)")
+
+    # 将报告内容直接输出到控制台，方便 AI 读取并展示给用户
+    print(f"\n{'=' * 70}")
+    print("  📋 以下是完整的分析报告内容：")
+    print(f"{'=' * 70}\n")
+    print(report_content)
+    print(f"\n{'=' * 70}")
+    print("  📋 报告内容结束")
+    print(f"{'=' * 70}")
 
     total_elapsed = time.time() - total_start_time
     total_comments = sum(item["comment_count"] for item in all_results)

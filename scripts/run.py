@@ -4,6 +4,8 @@
 支持单平台或多平台同时采集，通过 PLATFORMS 配置控制。
 """
 
+import glob
+import os
 import sys
 import time
 from pathlib import Path
@@ -144,6 +146,29 @@ def main():
                 print(f"  ✅ 跨平台报告: {report_path}")
         except Exception as report_error:
             print(f"  ⚠️ 跨平台报告生成失败: {report_error}")
+    elif len(results) == 1:
+        # 单平台模式：读取该平台的报告文件并输出到控制台
+        platform = list(results.keys())[0]
+        platform_name = PLATFORM_NAMES.get(platform, platform)
+        result_path = results[platform]
+        # 查找对应的报告文件（在平台的 output/report 目录下）
+        report_dir = SCRIPT_DIR / platform / "output" / "report"
+        if report_dir.exists():
+            report_files = sorted(glob.glob(str(report_dir / "*.md")), key=os.path.getmtime, reverse=True)
+            if report_files:
+                latest_report = report_files[0]
+                try:
+                    with open(latest_report, "r", encoding="utf-8") as report_file:
+                        single_report_content = report_file.read()
+                    print(f"\n{'=' * 70}")
+                    print(f"  📋 以下是 {platform_name} 的完整分析报告内容：")
+                    print(f"{'=' * 70}\n")
+                    print(single_report_content)
+                    print(f"\n{'=' * 70}")
+                    print(f"  📋 {platform_name} 报告内容结束")
+                    print(f"{'=' * 70}")
+                except Exception as read_error:
+                    print(f"  ⚠️ 读取报告文件失败: {read_error}")
 
     total_elapsed = time.time() - total_start
 

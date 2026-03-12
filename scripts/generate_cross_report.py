@@ -256,6 +256,16 @@ def generate_cross_platform_report(results, keywords=None, output_dir=None):
         report_file.write(report_content)
 
     print(f"  ✅ 跨平台报告已生成: {report_file_path}")
+
+    # 将报告内容直接输出到控制台，方便 AI 读取并展示给用户
+    print(f"\n{'=' * 70}")
+    print("  📋 以下是完整的跨平台对比报告内容：")
+    print(f"{'=' * 70}\n")
+    print(report_content)
+    print(f"\n{'=' * 70}")
+    print("  📋 跨平台报告内容结束")
+    print(f"{'=' * 70}")
+
     return str(report_file_path)
 
 
