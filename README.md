@@ -42,6 +42,8 @@ pip install selenium undetected-chromedriver demucs openai-whisper torch torchau
 - 如果有缓存的 Cookie，自动加载
 - 如果都没有，自动弹出浏览器让你登录，登录后自动提取并缓存
 
+**Cookie 存储位置**：`scripts/<platform>/.cookie_cache/`（工作区内的相对路径）
+
 ### 3. 修改配置并运行
 
 编辑 `scripts/run.py` 中的配置区：
