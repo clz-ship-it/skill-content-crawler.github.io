@@ -10,7 +10,7 @@ description: |
 
 ## Overview
 
-使用 **undetected-chromedriver** 模拟真实用户浏览行为，搜索小红书关键词下的高赞爆款笔记。核心策略是**在搜索结果页逐个点击笔记卡片封面链接**（带 xsec_token），进入详情页后从 DOM 提取标题、正文、互动数据和高赞评论。自动生成 Markdown 格式爆款拆解报告。**小红书必须提供 Cookie**。
+使用 **undetected-chromedriver** 模拟真实用户浏览行为，搜索小红书关键词下的高赞爆款笔记。支持**多关键词批量搜索**，AI 基于用户提供的核心关键词自动拓展为 5 个相关搜索词，全面覆盖该主题的爆款内容。核心策略是**在搜索结果页逐个点击笔记卡片封面链接**（带 xsec_token），进入详情页后从 DOM 提取标题、正文、互动数据和高赞评论。自动生成 Markdown 格式爆款拆解报告。**小红书必须提供 Cookie**。
 
 ## 反爬策略（重要）
 
@@ -96,7 +96,8 @@ pip install undetected-chromedriver selenium
 # Cookie 获取: 打开 xiaohongshu.com → F12 → Application → Cookies → 复制
 
 # 2. 修改 run.py 配置区
-KEYWORDS = "用户提供的关键词"
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+KEYWORDS = ["核心词", "核心词教程", "核心词测评", "核心词怎么用", "核心词开源"]
 XHS_COOKIE = "用户提供的Cookie"
 
 # 3. 执行采集脚本

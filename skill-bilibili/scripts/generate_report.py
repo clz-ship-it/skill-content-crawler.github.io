@@ -12,10 +12,13 @@ from collections import Counter
 from datetime import datetime
 from typing import Any, Dict, List
 
-def load_data(json_path: str) -> List[Dict[str, Any]]:
-    """加载采集的 JSON 数据"""
+def load_data(json_path: str) -> Dict[str, Any]:
+    """加载采集的 JSON 数据，兼容旧格式（纯列表）和新格式（字典）"""
     with open(json_path, "r", encoding="utf-8") as json_file:
-        return json.load(json_file)
+        raw = json.load(json_file)
+    if isinstance(raw, list):
+        return {"videos": raw, "keyword": "", "all_keywords": []}
+    return raw
 
 def extract_keyword_from_filename(filename: str) -> str:
     """从文件名中提取关键词，如 bili_openclaw_2026-03-10_112106.json → openclaw"""
@@ -102,7 +105,7 @@ def analyze_subtitles(videos: List[Dict[str, Any]]) -> Dict[str, Any]:
         "hot_topics": word_counter.most_common(30),
     }
 
-def generate_report(videos: List[Dict[str, Any]], keyword: str) -> str:
+def generate_report(videos: List[Dict[str, Any]], keyword: str, all_keywords: List[str] = None) -> str:
     """生成 Markdown 格式的爆款分析报告"""
     comment_analysis = analyze_comments(videos)
     subtitle_analysis = analyze_subtitles(videos)
@@ -121,6 +124,8 @@ def generate_report(videos: List[Dict[str, Any]], keyword: str) -> str:
     report_lines.append(f"# 🔥 B站爆款内容拆解报告")
     report_lines.append("")
     report_lines.append(f"**选题/关键词**: {keyword}")
+    if all_keywords and len(all_keywords) > 1:
+        report_lines.append(f"**搜索关键词**: {', '.join(all_keywords)}")
     report_lines.append(f"**平台**: B站 (bilibili.com)")
     report_lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report_lines.append("")
@@ -299,11 +304,12 @@ def generate_report(videos: List[Dict[str, Any]], keyword: str) -> str:
 
 def generate_and_save_report(json_path: str, output_dir: str = None) -> str:
     """生成报告并保存到文件，返回报告文件路径"""
-    videos = load_data(json_path)
-    filename = os.path.basename(json_path)
-    keyword = extract_keyword_from_filename(filename)
+    data = load_data(json_path)
+    videos = data.get("videos", [])
+    all_keywords = data.get("all_keywords", [])
+    keyword = data.get("keyword", "") or extract_keyword_from_filename(os.path.basename(json_path))
 
-    report_content = generate_report(videos, keyword)
+    report_content = generate_report(videos, keyword, all_keywords=all_keywords)
 
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "report")

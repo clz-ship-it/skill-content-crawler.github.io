@@ -15,7 +15,7 @@ description: |
 
 | 功能 | 说明 |
 |------|------|
-| 关键词搜索 | 按点赞数排序，取 Top N 视频 |
+| 多关键词搜索 | 拓展为 5 个关键词分别搜索，按标题去重，取点赞 Top N 视频 |
 | 字幕提取 | 通过 Player API 获取 AI 自动字幕（需 Cookie） |
 | 评论抓取 | 支持多页抓取，按点赞排序（需 Cookie） |
 | 报告生成 | 自动生成 Markdown 爆款分析报告 |
@@ -54,7 +54,8 @@ B 站字幕和评论 API 需要登录态 Cookie 才能正常返回数据。**必
 # Cookie 获取：打开 bilibili.com → F12 → Application → Cookies → 复制全部
 
 # 2. 修改 run.py 配置区
-KEYWORDS = "用户提供的关键词"  # 关键词搜索模式
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+KEYWORDS = ["核心词", "核心词教程", "核心词测评", "核心词怎么用", "核心词开源"]
 VIDEO_URLS = []  # URL 直接分析模式（可选）
 # 示例: VIDEO_URLS = ["https://www.bilibili.com/video/BV1xxx"]
 BILI_COOKIE = "用户提供的 Cookie"
@@ -76,7 +77,7 @@ BILI_COOKIE = "用户提供的 Cookie"
 
 | 模式 | 配置 | 说明 |
 |------|------|------|
-| 关键词搜索 | `KEYWORDS = "xxx"` | 搜索关键词下的高赞视频（默认模式） |
+| 关键词搜索 | `KEYWORDS = ["xxx", "xxx教程", ...]` | 搜索关键词下的高赞视频（默认模式） |
 | URL 直接分析 | `VIDEO_URLS = ["url1", "url2"]` | 直接分析指定的视频 URL，跳过搜索 |
 
 URL 模式优先级高于关键词模式：当 VIDEO_URLS 非空时自动使用 URL 模式。
@@ -102,30 +103,36 @@ output/<关键词>/
 
 ## 数据格式
 
-采集的 JSON 数据为数组，每个元素包含：
+采集的 JSON 数据为字典结构，包含以下字段：
 
 ```json
 {
-  "bvid": "BV1xxx",
-  "aid": 123456,
-  "video_title": "视频标题",
-  "video_url": "https://www.bilibili.com/video/BV1xxx",
-  "author": "UP主名称",
-  "like_count": 12345,
-  "subtitle_success": true,
-  "subtitle_text": "字幕全文...",
-  "subtitle_count": 310,
-  "subtitle_language": "中文",
-  "comments": [
+  "keyword": "核心词",
+  "all_keywords": ["核心词", "核心词教程", "核心词测评", "核心词怎么用", "核心词开源"],
+  "videos": [
     {
-      "author": "评论者",
-      "content": "评论内容",
-      "like_count": 48,
-      "reply_count": 5,
-      "publish_time": "2026-03-08 15:30:00"
+      "bvid": "BV1xxx",
+      "aid": 123456,
+      "video_title": "视频标题",
+      "video_url": "https://www.bilibili.com/video/BV1xxx",
+      "author": "UP主名称",
+      "like_count": 12345,
+      "subtitle_success": true,
+      "subtitle_text": "字幕全文...",
+      "subtitle_count": 310,
+      "subtitle_language": "中文",
+      "comments": [
+        {
+          "author": "评论者",
+          "content": "评论内容",
+          "like_count": 48,
+          "reply_count": 5,
+          "publish_time": "2026-03-08 15:30:00"
+        }
+      ],
+      "comment_count": 30
     }
-  ],
-  "comment_count": 30
+  ]
 }
 ```
 

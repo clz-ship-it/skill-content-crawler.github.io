@@ -1,145 +1,116 @@
-# 🦞 多平台爆款内容分析工具集
+# 多平台爆款内容拆解器
 
-基于 [Aone Copilot](https://copilot.code.alibaba-inc.com) Skill 框架开发的三合一爆款内容分析工具，支持**小红书**、**抖音**、**B站**三大平台的内容抓取与分析。
+同时分析 **小红书、抖音、B站** 三个平台的爆款内容，支持多关键词搜索、智能去重、内容提取和评论分析，生成跨平台对比分析报告。
 
-## ✨ 核心特性
+## 核心特点
 
-- **🔍 关键词搜索** — 输入关键词，自动搜索三大平台的相关内容
-- **📊 爆款分析** — 提取点赞、收藏、评论等互动数据，分析爆款特征
-- **📝 字幕提取** — 自动提取视频字幕/语音转文字，获取完整内容
-- **💬 评论抓取** — 抓取热门评论，分析用户反馈和舆情
-- **📋 报告生成** — 自动生成结构化的爆款内容分析报告
-- **🔐 Cookie 自动获取** — 首次运行自动弹出浏览器登录，Cookie 自动缓存，无需手动配置
+- 🔍 **多关键词搜索**：基于核心关键词自动拓展为 5 个相关搜索词，分别搜索后按标题去重，取点赞 Top N
+- 📺 **三平台并行采集**：小红书（图文+视频）、抖音（视频）、B站（视频）
+- 📝 **智能内容处理**：视频 → 字幕提取/Whisper 转录；图文 → 直接提取正文
+- 💬 **评论深度分析**：抓取高赞评论，提取用户关注点和高频词
+- 📊 **跨平台对比**：生成三平台数据对比和爆款公式总结
+- 🔗 **URL 直接分析**：支持直接提供视频/笔记 URL 进行分析
 
-## 📁 项目结构
+## 包含的 Skill
 
-```
-├── README.md                    # 本文件
-├── skill-xiaohongshu/           # 小红书爆款分析 Skill
-│   ├── SKILL.md                 # Skill 配置文件
-│   ├── scripts/
-│   │   ├── run.py               # 主入口脚本
-│   │   ├── cookie_helper.py     # Cookie 自动获取模块
-│   │   ├── xhs_api.py           # 小红书 API 封装
-│   │   ├── downloader.py        # 图片/视频下载器
-│   │   ├── transcriber.py       # 语音转文字
-│   │   ├── subtitle_extractor.py # 字幕提取
-│   │   ├── generate_report.py   # 报告生成
-│   │   └── config.py            # 配置文件
-│   ├── references/              # 参考文档
-│   └── example_report.md        # 示例报告
-│
-├── skill-douyin/                # 抖音爆款分析 Skill
-│   ├── SKILL.md
-│   ├── scripts/
-│   │   ├── run.py               # 主入口脚本
-│   │   ├── cookie_helper.py     # Cookie 自动获取模块
-│   │   ├── douyin_api.py        # 抖音 API 封装
-│   │   ├── bcut_asr.py          # 必剪 ASR 语音识别
-│   │   ├── downloader.py        # 视频下载器
-│   │   ├── transcriber.py       # 语音转文字
-│   │   ├── subtitle_extractor.py # 字幕提取
-│   │   ├── generate_report.py   # 报告生成
-│   │   ├── html_structure_detector.py # 页面结构检测
-│   │   └── config.py            # 配置文件
-│   ├── references/              # 参考文档
-│   └── example_report.md        # 示例报告
-│
-├── skill-bilibili/              # B站爆款分析 Skill
-│   ├── SKILL.md
-│   ├── scripts/
-│   │   ├── run.py               # 主入口脚本
-│   │   ├── cookie_helper.py     # Cookie 自动获取模块
-│   │   ├── bilibili_api.py      # B站 API 封装
-│   │   ├── generate_report.py   # 报告生成
-│   │   ├── test_bili_api.py     # API 测试脚本
-│   │   └── debug_subtitle.py    # 字幕调试工具
-│   ├── references/              # 参考文档
-│   └── example_report.md        # 示例报告
-```
+本项目包含 4 个独立的 Claude Code Skill，可单独使用也可组合使用：
 
-## 🚀 快速开始
+| Skill | 平台 | 说明 |
+|-------|------|------|
+| [skill-xiaohongshu](./skill-xiaohongshu/) | 小红书 | undetected-chromedriver + 点击卡片导航 + DOM 提取 |
+| [skill-douyin](./skill-douyin/) | 抖音 | undetected-chromedriver + 四级内容提取 + 三级评论抓取 |
+| [skill-bilibili](./skill-bilibili/) | B站 | 纯 API 调用 + AI 字幕提取 + 评论抓取 |
+| [skill-multi-platform](./skill-multi-platform/) | 三平台 | 并行执行三平台采集 + 跨平台对比报告 |
 
-### 环境要求
+## 环境要求
 
-- **Python 3.9+**
-- **Chrome 浏览器**（用于自动登录获取 Cookie）
+- **Python 3.8+**
+- **Chrome 浏览器**（抖音和小红书需要）
+- **ffmpeg**（音视频处理）
 
-### 安装依赖
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
-pip install requests beautifulsoup4 undetected-chromedriver yt-dlp
+pip install selenium undetected-chromedriver openai-whisper moviepy yt-dlp requests
 ```
 
-### 使用方式
+### 2. 获取 Cookie
 
-每个 Skill 都可以独立运行。进入对应的 `scripts/` 目录，编辑 `run.py` 顶部的配置区，然后运行：
+| 平台 | Cookie 要求 | 获取方式 |
+|------|-----------|---------|
+| 小红书 | **必须** | xiaohongshu.com → F12 → Application → Cookies |
+| 抖音 | **必须** | douyin.com → F12 → Application → Cookies |
+| B站 | **必须** | bilibili.com → F12 → Application → Cookies |
 
-```bash
-# 小红书
-cd skill-xiaohongshu/scripts
-python run.py
+### 3. 配置关键词
 
-# 抖音
-cd skill-douyin/scripts
-python run.py
-
-# B站
-cd skill-bilibili/scripts
-python run.py
-```
-
-### 配置说明
-
-每个 `run.py` 顶部都有一个配置区，可以设置：
+编辑对应 skill 的 `scripts/run.py` 配置区：
 
 ```python
-KEYWORD = "openclaw"     # 搜索关键词
-MAX_NOTES = 10           # 最多抓取笔记/视频数量
-MAX_COMMENTS = 30        # 每条内容最多抓取评论数
+# 关键词列表：基于核心关键词拓展为 5 个相关搜索词
+KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
 ```
 
-## 🔐 Cookie 自动获取
+### 4. 运行
 
-三个 Skill 都内置了 **Cookie 自动获取功能**，采用三级策略：
+```bash
+# 单平台运行
+cd skill-bilibili/scripts && python run.py
+cd skill-douyin/scripts && python run.py
+cd skill-xiaohongshu/scripts && python run.py
 
-1. **硬编码 Cookie** — 如果在 `run.py` 配置区填入了 Cookie，优先使用
-2. **缓存文件** — 从 `.cookie_cache/` 目录读取上次保存的 Cookie
-3. **浏览器登录** — 自动弹出 Chrome 浏览器，打开平台登录页面，用户扫码/输入密码登录后，脚本自动提取 Cookie 并缓存
-
-> 💡 首次运行时会自动弹出浏览器让你登录，登录成功后 Cookie 会被缓存，后续运行无需重复登录。
-
-### 登录状态检测
-
-| 平台 | 检测 Cookie | 登录页面 |
-|------|------------|---------|
-| 小红书 | `web_session` | `xiaohongshu.com` |
-| 抖音 | `sessionid` | `douyin.com` |
-| B站 | `SESSDATA` | `passport.bilibili.com/login` |
-
-## 📊 输出说明
-
-运行后，数据保存在各 Skill 的 `scripts/output/` 目录下：
-
-```
-output/
-├── search_results.json      # 搜索结果
-├── subtitles/               # 字幕文件
-├── comments/                # 评论数据
-└── report.md                # 分析报告
+# 三平台并行运行
+cd skill-multi-platform/scripts && python run.py
 ```
 
-## 🔧 作为 Aone Copilot Skill 使用
+## 项目结构
 
-这三个工具也可以作为 [Aone Copilot](https://copilot.code.alibaba-inc.com) 的 Skill 使用。将对应的 `skill-*` 目录复制到 `~/.aone_copilot/skills/` 下即可注册为 Skill，之后在 Copilot 对话中直接说"分析小红书/抖音/B站上关于 XXX 的爆款内容"即可触发。
+```
+├── README.md                     # 全局说明（本文件）
+├── skill-bilibili/               # B站爆款分析器
+│   ├── SKILL.md
+│   ├── README.md
+│   ├── scripts/
+│   └── references/
+├── skill-douyin/                 # 抖音爆款分析器
+│   ├── SKILL.md
+│   ├── README.md
+│   ├── scripts/
+│   └── references/
+├── skill-xiaohongshu/            # 小红书爆款拆解器
+│   ├── SKILL.md
+│   ├── README.md
+│   ├── scripts/
+│   └── references/
+└── skill-multi-platform/         # 多平台并行分析器
+    ├── SKILL.md
+    ├── scripts/
+    └── references/
+```
 
-## ⚠️ 注意事项
+## 报告输出
 
-1. **合规使用** — 仅用于个人学习和研究，请遵守各平台的使用条款
-2. **频率限制** — 脚本内置了请求延迟，避免对平台造成压力
-3. **版权尊重** — 尊重内容创作者的版权，不要用于商业用途
-4. **数据安全** — Cookie 仅保存在本地，不会上传到任何第三方服务
+每个平台的报告包含以下板块：
 
-## 📄 License
+| 板块 | 内容 |
+|------|------|
+| 📊 数据总览 | 视频/笔记数、总点赞、平均点赞、内容提取成功率 |
+| 🏆 Top 排行 | 按点赞排序的内容列表，含摘要和热门评论 |
+| 💬 评论分析 | 全网最热评论 Top 10、高频关键词 Top 20 |
+| 📝 内容分析 | 内容高频主题词 Top 20 |
+| 🎯 爆款特征 | 标题特征、互动数据、标题关键词 |
+| 🔑 爆款公式 | 可复制的创作建议 |
 
-MIT License
+## AI 模型
+
+- **Demucs htdemucs** (~80MB)：Facebook Research 音源分离，提取纯人声
+- **Whisper base** (~140MB)：OpenAI 语音识别，中文转录
+- 首次运行自动下载，之后缓存在本地
+
+## 注意事项
+
+- **Cookie 有效期**：小红书 1-7 天，抖音约 24 小时，B站较长
+- **反爬策略**：小红书和抖音使用 undetected-chromedriver 绕过检测
+- **合规使用**：仅用于个人学习和研究，尊重内容创作者版权

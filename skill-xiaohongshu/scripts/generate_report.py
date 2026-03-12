@@ -136,6 +136,9 @@ def generate_report(data: Dict[str, Any], keyword: str) -> str:
     report_lines.append(f"# 🔥 小红书爆款内容拆解报告")
     report_lines.append("")
     report_lines.append(f"**选题/关键词**: {keyword}")
+    all_keywords = data.get("all_keywords", [])
+    if all_keywords and len(all_keywords) > 1:
+        report_lines.append(f"**搜索关键词**: {', '.join(all_keywords)}")
     report_lines.append(f"**平台**: 小红书 (xiaohongshu.com)")
     report_lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report_lines.append("")

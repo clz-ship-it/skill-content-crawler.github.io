@@ -12,11 +12,14 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 import bilibili_api as bilibili
 from cookie_helper import get_cookie_or_login
 
-# ========== 配置区 ==========
-KEYWORDS = "openclaw"    # 搜索关键词
-MAX_VIDEOS = 10          # 抓取点赞最高的视频数量
+# ========== 配置区（由 AI 根据用户输入修改） ==========
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+# 示例: KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
+KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
+MAX_VIDEOS = 10          # 最终保留的点赞最高视频数量（去重后取 Top N）
 MAX_COMMENTS = 30        # 每个视频最多抓取的评论数量（按热度/点赞排序）
 MAX_PAGES = 2            # 每个视频最多抓取的评论页数（每页最多 20 条）
+SEARCH_PER_KEYWORD = 10  # 每个关键词搜索返回的视频数量
 
 # URL 直接分析模式：填入B站视频 URL 列表，非空时跳过搜索
 # 示例: VIDEO_URLS = ["https://www.bilibili.com/video/BV1xxx"]
@@ -38,15 +41,18 @@ if __name__ == "__main__":
     # 判断使用哪种模式
     use_url_mode = bool(VIDEO_URLS)
 
+    # 兼容旧格式：如果 KEYWORDS 是字符串，自动转为列表
+    keywords_list = KEYWORDS if isinstance(KEYWORDS, list) else [KEYWORDS]
+
     print(f"\n{'=' * 60}")
     if use_url_mode:
         print(f"  B站爬虫 - URL 直接分析 + 字幕提取 + 评论")
         print(f"  模式: URL 直接分析")
         print(f"  视频数量: {len(VIDEO_URLS)} | 每个视频评论: {MAX_COMMENTS}")
     else:
-        print(f"  B站爬虫 - 搜索 + 字幕提取 + 评论")
-        print(f"  关键词: {KEYWORDS}")
-        print(f"  最多视频: {MAX_VIDEOS} | 每个视频评论: {MAX_COMMENTS}")
+        print(f"  B站爬虫 - 多关键词搜索 + 去重 + 字幕提取 + 评论")
+        print(f"  关键词({len(keywords_list)}个): {keywords_list}")
+        print(f"  每词搜索: {SEARCH_PER_KEYWORD} | 去重后保留: Top {MAX_VIDEOS} | 每视频评论: {MAX_COMMENTS}")
     print(f"  Cookie: {'已配置' if BILI_COOKIE else '未配置（无法获取AI字幕）'}")
     print(f"{'=' * 60}")
     print()
@@ -102,23 +108,50 @@ if __name__ == "__main__":
             exit(0)
 
     else:
-        # 关键词搜索模式（原有逻辑）
-        print("[Step 1] 搜索视频...")
-        search_result = bilibili.search(
-            keywords=KEYWORDS,
-            page_size=MAX_VIDEOS,
-        )
+        # 多关键词搜索模式：逐个关键词搜索 → 合并 → 按标题去重 → 按点赞取 Top N
+        print(f"[Step 1] 多关键词搜索（{len(keywords_list)} 个关键词）...")
+        all_candidates = []
+        for kw_idx, keyword in enumerate(keywords_list, 1):
+            print(f"\n  [{kw_idx}/{len(keywords_list)}] 搜索关键词: {keyword}")
+            search_result = bilibili.search(
+                keywords=keyword,
+                page_size=SEARCH_PER_KEYWORD,
+            )
+            keyword_videos = search_result.get("items", [])
+            print(f"    ✓ 找到 {len(keyword_videos)} 个视频")
+            for video in keyword_videos:
+                video["_source_keyword"] = keyword
+            all_candidates.extend(keyword_videos)
+            if kw_idx < len(keywords_list):
+                time.sleep(1)
 
-        videos = search_result.get("items", [])
+        # 按标题去重（保留点赞数更高的那条）
+        print(f"\n  合并去重: 搜索到 {len(all_candidates)} 条结果")
+        seen_titles = {}
+        for video in all_candidates:
+            title = video.get("title", "").strip()
+            if not title:
+                continue
+            existing = seen_titles.get(title)
+            if existing is None or video.get("like_count", 0) > existing.get("like_count", 0):
+                seen_titles[title] = video
+        unique_videos = list(seen_titles.values())
+        print(f"  去重后: {len(unique_videos)} 条唯一视频")
+
+        # 按点赞数排序，取 Top N
+        unique_videos.sort(key=lambda video: video.get("like_count", 0), reverse=True)
+        videos = unique_videos[:MAX_VIDEOS]
+
         step1_elapsed = time.time() - step1_start
-        print(f"\n  找到 {len(videos)} 个视频 (耗时 {step1_elapsed:.1f}s):\n")
+        print(f"\n  最终选取 Top {len(videos)} 视频 (耗时 {step1_elapsed:.1f}s):\n")
         for idx, video in enumerate(videos, 1):
             title = video.get("title", "")[:80]
             author = video.get("author", "") or "unknown"
             bvid = video.get("bvid", "")
             like_count = video.get("like_count", 0)
+            source_keyword = video.get("_source_keyword", "")
             print(f"  {idx}. [{like_count} 赞] {title}")
-            print(f"     Author: {author} | BVID: {bvid}")
+            print(f"     Author: {author} | BVID: {bvid} | 来源词: {source_keyword}")
             print(f"     URL: {video.get('url', '')}")
             print()
 
@@ -233,10 +266,15 @@ if __name__ == "__main__":
     if use_url_mode:
         output_path = os.path.join(output_dir, f"bili_url_analysis_{timestamp}.json")
     else:
-        output_path = os.path.join(output_dir, f"bili_{KEYWORDS}_{timestamp}.json")
+        output_path = os.path.join(output_dir, f"bili_{keywords_list[0]}_{timestamp}.json")
 
+    output_data = {
+        "keyword": keywords_list[0],
+        "all_keywords": keywords_list,
+        "videos": all_results,
+    }
     with open(output_path, "w", encoding="utf-8") as output_file:
-        json.dump(all_results, output_file, ensure_ascii=False, indent=2)
+        json.dump(output_data, output_file, ensure_ascii=False, indent=2)
 
     # Step 4: 生成爆款分析报告
     step4_start = time.time()

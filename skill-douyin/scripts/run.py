@@ -15,13 +15,16 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # =====================================================
-# 配置区：请在这里填入你的抖音 Cookie 和搜索关键词
+# 配置区（由 AI 根据用户输入修改）
 # =====================================================
-KEYWORDS = "openclaw"  # 搜索关键词
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+# 示例: KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
+KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
 VIDEO_URLS = []  # URL 直接分析模式：填入抖音视频 URL 列表，非空时跳过搜索
 # 示例: VIDEO_URLS = ["https://www.douyin.com/video/7615202845574302986"]
-MAX_VIDEOS = 10  # 最多分析多少个视频（减少数量降低反爬风险）
+MAX_VIDEOS = 10  # 最终保留的点赞最高视频数量（去重后取 Top N）
 MAX_COMMENTS = 30  # 每个视频抓取多少条评论
+SEARCH_PER_KEYWORD = 10  # 每个关键词搜索返回的视频数量
 
 # 抖音 Cookie（从浏览器开发者工具复制）
 # 获取方式：打开抖音网页版 → F12 → Application → Cookies → 复制所有 Cookie
@@ -38,15 +41,18 @@ from generate_report import generate_and_save_report
 from html_structure_detector import detect_and_report, HTMLStructureDetector
 from cookie_helper import get_cookie_or_login
 
-OUTPUT_DIR = Path(__file__).parent / "output" / ("url_analysis" if VIDEO_URLS else KEYWORDS)
+OUTPUT_DIR = Path(__file__).parent / "output" / ("url_analysis" if VIDEO_URLS else (KEYWORDS[0] if isinstance(KEYWORDS, list) else KEYWORDS))
 
 
 def run():
     """抖音爆款拆解器主流程"""
+    # 兼容旧格式：如果 KEYWORDS 是字符串，自动转为列表
+    keywords_list = KEYWORDS if isinstance(KEYWORDS, list) else [KEYWORDS]
+
     print("=" * 70)
     print(f"  🎵 抖音爆款拆解器")
-    print(f"  关键词：{KEYWORDS}")
-    print(f"  视频数：{MAX_VIDEOS} | 每视频评论数：{MAX_COMMENTS}")
+    print(f"  关键词({len(keywords_list)}个)：{keywords_list}")
+    print(f"  每词搜索：{SEARCH_PER_KEYWORD} | 去重后保留：Top {MAX_VIDEOS} | 每视频评论数：{MAX_COMMENTS}")
     print("=" * 70)
 
     # Step 0: 获取 Cookie（优先配置区 → 缓存 → 弹出浏览器登录）
@@ -69,7 +75,7 @@ def run():
         
         # 检测搜索页面
         print(f"  - 检测搜索页面结构...")
-        detector.detect_search_page(KEYWORDS)
+        detector.detect_search_page(keywords_list[0])
         
         # 生成报告
         report_path = detector.save_report(OUTPUT_DIR / "structure_reports")
@@ -131,21 +137,50 @@ def run():
             return
         print(f"  ✓ 找到 {len(videos)} 个视频")
     else:
-        # 关键词搜索模式
-        print(f"\n[Step 2] 搜索抖音关键词：{KEYWORDS}")
-        search_result = search_with_driver(driver, KEYWORDS, page_size=MAX_VIDEOS)
-        videos = search_result.get("items", [])
+        # 多关键词搜索模式：逐个关键词搜索 → 合并 → 按标题去重 → 按点赞取 Top N
+        print(f"\n[Step 2] 多关键词搜索（{len(keywords_list)} 个关键词）...")
+        import time as _time
+        all_candidates = []
+        for kw_idx, keyword in enumerate(keywords_list, 1):
+            print(f"\n  [{kw_idx}/{len(keywords_list)}] 搜索关键词：{keyword}")
+            search_result = search_with_driver(driver, keyword, page_size=SEARCH_PER_KEYWORD)
+            keyword_videos = search_result.get("items", [])
+            print(f"    ✓ 找到 {len(keyword_videos)} 个视频")
+            for video in keyword_videos:
+                video["_source_keyword"] = keyword
+            all_candidates.extend(keyword_videos)
+            if kw_idx < len(keywords_list):
+                _time.sleep(2)
+
+        # 按标题去重（保留点赞数更高的那条）
+        print(f"\n  合并去重：搜索到 {len(all_candidates)} 条结果")
+        seen_titles = {}
+        for video in all_candidates:
+            title = video.get("title", "").strip()
+            if not title:
+                continue
+            existing = seen_titles.get(title)
+            if existing is None or video.get("like_count", 0) > existing.get("like_count", 0):
+                seen_titles[title] = video
+        unique_videos = list(seen_titles.values())
+        print(f"  去重后：{len(unique_videos)} 条唯一视频")
+
+        # 按点赞数排序，取 Top N
+        unique_videos.sort(key=lambda video: video.get("like_count", 0), reverse=True)
+        videos = unique_videos[:MAX_VIDEOS]
+
         if not videos:
             print("  ✗ 未找到视频")
             driver.quit()
             return
 
-        print(f"  ✓ 找到 {len(videos)} 条高赞视频")
+        print(f"\n  最终选取 Top {len(videos)} 视频：")
     for idx, video in enumerate(videos, 1):
         if VIDEO_URLS:
             print(f"    {idx}. {video.get('url', '')}")
         else:
-            print(f"    {idx}. [{video.get('like_count', 0)} 赞] {video.get('title', '')[:50]}")
+            source_keyword = video.get("_source_keyword", "")
+            print(f"    {idx}. [{video.get('like_count', 0)} 赞] {video.get('title', '')[:50]} (来源词: {source_keyword})")
 
     # Step 3-5: 对每个视频执行 下载→转录→评论（复用浏览器实例）
     all_results = []
@@ -229,7 +264,8 @@ def run():
 
     # Step 7: 保存汇总数据
     summary = {
-        "keyword": KEYWORDS,
+        "keyword": keywords_list[0],
+        "all_keywords": keywords_list,
         "platform": "douyin",
         "total_videos": len(all_results),
         "max_comments_per_video": MAX_COMMENTS,
@@ -255,7 +291,7 @@ def run():
     if VIDEO_URLS:
         print(f"  模式：URL 直接分析")
     else:
-        print(f"  关键词：{KEYWORDS}")
+        print(f"  关键词：{keywords_list}")
     print(f"  视频数：{len(all_results)}")
     print(f"  数据保存：{results_path}")
     if report_path:

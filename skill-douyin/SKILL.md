@@ -15,7 +15,7 @@ description: |
 
 | 功能 | 说明 |
 |------|------|
-| 关键词搜索 | 按点赞数排序，取 Top N 视频（undetected_chromedriver） |
+| 多关键词搜索 | 拓展为 5 个关键词分别搜索，按标题去重，取点赞 Top N 视频（undetected_chromedriver） |
 | 内容提取 | 四级降级：抖音字幕→yt-dlp→必剪ASR→Whisper转录 |
 | 评论抓取 | API 优先 + 三级降级（API→源码正则→DOM 解析） |
 | 报告生成 | 自动生成 Markdown 爆款分析报告 |
@@ -26,7 +26,7 @@ description: |
 2. **不要使用 headless 模式** — 抖音检测 headless 极严，必须可见浏览器模式
 3. **不要编造数据** — 点赞、评论数据必须从返回值提取
 4. **不要跳过报告生成** — 数据采集完成后必须自动生成分析报告
-5. **不要修改 Cookie 变量名** — run.py 第 2 行 DOUYIN_COOKIE 是唯一的 Cookie 配置入口
+5. **不要修改 Cookie 变量名** — run.py 第 2 行 `DOUYIN_COOKIE` 是唯一的 Cookie 配置入口，所有 Cookie 必须通过此变量传入
 
 ## Cookie 要求
 
@@ -54,7 +54,8 @@ description: |
 
 # 2. 修改 run.py 配置区
 DOUYIN_COOKIE = "用户提供的 Cookie"   # 第 2 行
-KEYWORDS = "用户指定的关键词"          # 第 21 行
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+KEYWORDS = ["核心词", "核心词教程", "核心词测评", "核心词怎么用", "核心词开源"]          # 第 21 行
 VIDEO_URLS = []  # URL 直接分析模式（可选）
 # 示例: VIDEO_URLS = ["https://www.douyin.com/video/7615202845574302986"]
 MAX_VIDEOS = 10
@@ -79,7 +80,7 @@ MAX_COMMENTS = 30
 
 | 模式 | 配置 | 说明 |
 |------|------|------|
-| 关键词搜索 | `KEYWORDS = "xxx"` | 搜索关键词下的高赞视频（默认模式） |
+| 关键词搜索 | `KEYWORDS = ["xxx", "xxx教程", ...]` | 拓展为 5 个关键词分别搜索后按标题去重，取点赞 Top N（默认模式） |
 | URL 直接分析 | `VIDEO_URLS = ["url1", "url2"]` | 直接分析指定的视频 URL，跳过搜索 |
 
 URL 模式优先级高于关键词模式：当 VIDEO_URLS 非空时自动使用 URL 模式。

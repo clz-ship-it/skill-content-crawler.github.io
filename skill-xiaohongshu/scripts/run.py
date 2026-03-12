@@ -16,11 +16,14 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # ========== 配置区（由 AI 根据用户输入修改） ==========
-KEYWORDS = "openclaw"
+# 关键词列表：AI 基于用户提供的核心关键词，拓展为 5 个相关搜索词
+# 示例: KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
+KEYWORDS = ["openclaw", "openclaw教程", "openclaw测评", "openclaw怎么用", "openclaw开源"]
 NOTE_URLS = []  # URL 直接分析模式：填入小红书笔记 URL 列表，非空时跳过搜索
 # 示例: NOTE_URLS = ["https://www.xiaohongshu.com/explore/6xxx"]
-MAX_NOTES = 10
+MAX_NOTES = 10  # 最终保留的点赞最高笔记数量（去重后取 Top N）
 MAX_COMMENTS = 30
+SEARCH_PER_KEYWORD = 10  # 每个关键词搜索返回的笔记数量
 XHS_COOKIE = "abRequestId=9d5a2792-cc09-574c-80bd-623f0e8c49e8; xsecappid=xhs-pc-web; a1=19c219c5cc060ljf3uaf7orebijvb8o16pm1l2jcx50000130755; webId=89ccbe94d1619b6a978c005093c3c434; gid=yjSJyjSKjKKjyjSJyjS2SUJVS8K81Viq70iW6SClFdD3Vy28hDYly1888yq8W2282jqDSDJY; web_session=040069b3b6fe6a34fa609685853b4b18acc98c; id_token=VjEAAAts+qawyxLhx7DDo75kkGafrkgiDuCadjNiZW3p8YgpWmpMGx1zlg0asgqMY0/JDTTGxKAuelnL69o3mTFE/qhH/+LTA5Z/c3y95y3eIWuvcD/+DToaVGYLSQrY; webBuild=5.14.6; acw_tc=0ad5903a17732845814167536e2fc787a32cc6906243c2f59f85139c6de023; websectiga=f47eda31ec99545da40c2f731f0630efd2b0959e1dd10d5fedac3dce0bd1e04d; sec_poison_id=08fd55ba-4a41-4bce-883d-a2b6e1efde2f; unread={%22ub%22:%2269b2291a000000002203b50f%22%2C%22ue%22:%2269b001e30000000006008e0b%22%2C%22uc%22:20}; loadts=1773284588816"
 # =====================================================
 
@@ -39,15 +42,18 @@ from cookie_helper import get_cookie_or_login
 import random
 import re
 
-OUTPUT_DIR = Path(__file__).parent / "output" / (KEYWORDS if not NOTE_URLS else "url_analysis")
+OUTPUT_DIR = Path(__file__).parent / "output" / ((KEYWORDS[0] if isinstance(KEYWORDS, list) else KEYWORDS) if not NOTE_URLS else "url_analysis")
 
 
 def run():
     """小红书爆款拆解器主流程"""
+    # 兼容旧格式：如果 KEYWORDS 是字符串，自动转为列表
+    keywords_list = KEYWORDS if isinstance(KEYWORDS, list) else [KEYWORDS]
+
     print("=" * 70)
     print(f"  📕 小红书爆款拆解器")
-    print(f"  关键词: {KEYWORDS}")
-    print(f"  笔记数: {MAX_NOTES} | 每笔记评论数: {MAX_COMMENTS}")
+    print(f"  关键词({len(keywords_list)}个): {keywords_list}")
+    print(f"  每词搜索: {SEARCH_PER_KEYWORD} | 去重后保留: Top {MAX_NOTES} | 每笔记评论数: {MAX_COMMENTS}")
     print("=" * 70)
 
     # Step 0: 获取 Cookie（优先配置区 → 缓存 → 弹出浏览器登录）
@@ -65,12 +71,12 @@ def run():
     print(f"  ✓ 浏览器已就绪（全程复用同一实例）")
 
     try:
-        _run_with_driver(driver)
+        _run_with_driver(driver, keywords_list)
     finally:
         driver.quit()
         print(f"\n  ✓ 浏览器已关闭")
 
-def _run_with_driver(driver):
+def _run_with_driver(driver, keywords_list):
     """使用共享浏览器执行采集流程"""
     # Step 1: 搜索或 URL 直接分析
     if NOTE_URLS:
@@ -99,20 +105,50 @@ def _run_with_driver(driver):
             print("  ✗ 未找到有效的笔记 URL")
             return
     else:
-        print(f"\n[Step 1] 搜索小红书关键词: {KEYWORDS}")
-        search_result = search(KEYWORDS, page_size=MAX_NOTES, cookie_string=XHS_COOKIE, driver=driver)
-        notes = search_result.get("items", [])
+        # 多关键词搜索模式：逐个关键词搜索 → 合并 → 按标题去重 → 按点赞取 Top N
+        print(f"\n[Step 1] 多关键词搜索（{len(keywords_list)} 个关键词）...")
+        all_candidates = []
+        for kw_idx, keyword in enumerate(keywords_list, 1):
+            print(f"\n  [{kw_idx}/{len(keywords_list)}] 搜索关键词: {keyword}")
+            search_result = search(keyword, page_size=SEARCH_PER_KEYWORD, cookie_string=XHS_COOKIE, driver=driver)
+            keyword_notes = search_result.get("items", [])
+            print(f"    ✓ 找到 {len(keyword_notes)} 条笔记")
+            for note in keyword_notes:
+                note["_source_keyword"] = keyword
+            all_candidates.extend(keyword_notes)
+            if kw_idx < len(keywords_list):
+                time.sleep(2)
+
+        # 按标题去重（保留点赞数更高的那条）
+        print(f"\n  合并去重: 搜索到 {len(all_candidates)} 条结果")
+        seen_titles = {}
+        for note in all_candidates:
+            title = note.get("title", "").strip()
+            if not title:
+                continue
+            existing = seen_titles.get(title)
+            if existing is None or note.get("like_count", 0) > existing.get("like_count", 0):
+                seen_titles[title] = note
+        unique_notes = list(seen_titles.values())
+        print(f"  去重后: {len(unique_notes)} 条唯一笔记")
+
+        # 按点赞数排序，取 Top N
+        unique_notes.sort(key=lambda note: note.get("like_count", 0), reverse=True)
+        notes = unique_notes[:MAX_NOTES]
+
         if not notes:
             print("  ✗ 未找到笔记")
             return
 
-        print(f"  ✓ 找到 {len(notes)} 条高赞笔记")
+        print(f"\n  最终选取 Top {len(notes)} 笔记:")
         for idx, note in enumerate(notes, 1):
             content_type_label = "📹视频" if note.get("is_video") else "📝图文"
-            print(f"    {idx}. [{note.get('like_count', 0)} 赞] [{content_type_label}] {note.get('title', '')[:40]}")
+            source_keyword = note.get("_source_keyword", "")
+            print(f"    {idx}. [{note.get('like_count', 0)} 赞] [{content_type_label}] {note.get('title', '')[:40]} (来源词: {source_keyword})")
 
-    # 构造搜索结果页 URL（用于 404 恢复）
-    search_url = f"https://www.xiaohongshu.com/search_result?keyword={KEYWORDS}&source=web_search_result_notes"
+    # 构造搜索结果页 URL（使用第一个关键词，用于 404 恢复和返回搜索页）
+    primary_keyword = keywords_list[0] if keywords_list else ""
+    search_url = f"https://www.xiaohongshu.com/search_result?keyword={primary_keyword}&source=web_search_result_notes"
 
     # Step 2-4: 在搜索结果页上按顺序逐个点击卡片，提取详情
     # 核心策略：不按排序后的列表查找特定 note_id，而是按页面上卡片出现顺序逐个点击
@@ -274,7 +310,8 @@ def _run_with_driver(driver):
     image_text_count = len(all_results) - video_count
 
     summary = {
-        "keyword": KEYWORDS,
+        "keyword": keywords_list[0],
+        "all_keywords": keywords_list,
         "platform": "xiaohongshu",
         "total_notes": len(all_results),
         "video_count": video_count,
@@ -299,7 +336,7 @@ def _run_with_driver(driver):
 
     print(f"\n{'=' * 70}")
     print(f"  ✅ 小红书爆款拆解数据采集完成！")
-    print(f"  关键词: {KEYWORDS}")
+    print(f"  关键词: {keywords_list}")
     print(f"  笔记数: {len(all_results)}（📹视频 {video_count} + 📝图文 {image_text_count}）")
     print(f"  数据文件: {results_path}")
     if 'report_path' in locals():
