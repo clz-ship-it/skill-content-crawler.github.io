@@ -56,6 +56,13 @@ def run(config=None):
     # Step 0: 获取 Cookie（优先配置区 → 缓存 → 弹出浏览器登录）
     print(f"\n[Step 0] 获取 Cookie...")
     bili_cookie = get_cookie_or_login("bilibili", bili_cookie)
+    if not bili_cookie:
+        print("\n  ✗ 错误：未能获取B站 Cookie，无法继续")
+        print("  请通过以下方式之一提供 Cookie：")
+        print("    1. 在配置区 BILI_COOKIE 中填入 Cookie 字符串")
+        print("    2. 在 ~/.aone_copilot/skills/.env 中设置 BILI_COOKIE=xxx")
+        print("    3. 重新运行脚本，在弹出的浏览器中登录B站")
+        return None
 
     # 判断使用哪种模式
     use_url_mode = bool(video_urls)
