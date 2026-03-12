@@ -24,16 +24,19 @@ description: |
 
 > **Cookie 存储**：所有 Cookie 统一存放在 `~/.aone_copilot/skills/.env` 文件中，格式为 `XHS_COOKIE=xxx`、`DOUYIN_COOKIE=xxx` 和 `BILI_COOKIE=xxx`。脚本会自动读取。
 >
-> **Cookie 获取方式**：当检测到对应平台 Cookie 缺失时，AI 会暂停执行并询问用户选择：
-> - **方式 1：手动提供 Cookie** — 用户按照 `references/cookie-guide.md` 的指引手动获取并粘贴 Cookie
-> - **方式 2：自动抓取 Cookie** — AI 执行浏览器 Cookie 提取脚本，自动从用户已登录的浏览器中抓取 Cookie（需要用户确认授权）
+> **Cookie 获取方式**：当检测到对应平台 Cookie 缺失时，脚本会**自动打开浏览器**让用户登录：
+> - 自动弹出 Chrome 浏览器，打开对应平台的登录页面
+> - 用户在浏览器中完成登录（支持扫码、账号密码等方式）
+> - 登录成功后，脚本自动提取 Cookie 并缓存到本地
+> - 下次运行时自动使用缓存的 Cookie，无需重复登录
+> - 如果已有 Cookie（配置区填入或缓存），则直接使用，不会弹出浏览器
 
 ## 严格禁止 (NEVER DO)
 
-1. **不要在没有 Cookie 时直接运行小红书/抖音** — 必须先向用户展示选择：
-   - **选项 A：提供 Cookie** — 用户手动提供 Cookie（参考 cookie-guide.md）
-   - **选项 B：自动抓取 Cookie** — 执行解析脚本，自动从浏览器提取 Cookie
-   - 等待用户明确选择后再继续执行
+1. **不要在没有 Cookie 时直接运行小红书/抖音** — 脚本会自动打开浏览器让用户登录
+   - 如果配置区填入了 Cookie，直接使用
+   - 如果有缓存的 Cookie，自动加载
+   - 如果都没有，自动弹出浏览器让用户登录，登录后自动提取并缓存
 2. **不要混淆平台数据** — 每个平台的数据独立保存
 3. **不要跳过字幕检测直接下载视频** — 有字幕则直接提取，无字幕才下载转录
 4. **不要保留视频文件** — 转录完成后必须删除视频，只保留文本
@@ -157,9 +160,9 @@ cd "$SKILL_DIR/scripts/xiaohongshu" && python run.py
 | `MAX_COMMENTS` | int | 每条内容最多抓取的评论数 |
 | `SEARCH_PER_KEYWORD` | int | 每个关键词搜索返回的结果数 |
 | `VIDEO_URLS` | list | URL 直接分析模式（非空时跳过搜索） |
-| `BILI_COOKIE` | str | B 站 Cookie（留空时提示用户选择：手动提供或自动抓取） |
-| `DOUYIN_COOKIE` | str | 抖音 Cookie（留空时提示用户选择：手动提供或自动抓取） |
-| `XHS_COOKIE` | str | 小红书 Cookie（留空时提示用户选择：手动提供或自动抓取） |
+| `BILI_COOKIE` | str | B 站 Cookie（留空时自动弹出浏览器登录） |
+| `DOUYIN_COOKIE` | str | 抖音 Cookie（留空时自动弹出浏览器登录） |
+| `XHS_COOKIE` | str | 小红书 Cookie（留空时自动弹出浏览器登录） |
 
 ### 多关键词搜索策略
 
