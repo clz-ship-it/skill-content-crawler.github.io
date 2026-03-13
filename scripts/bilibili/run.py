@@ -4,8 +4,15 @@
 import json
 import os
 import re
+import sys
+import io
 import time
 from datetime import datetime
+
+# 修复 Windows 控制台编码问题
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
