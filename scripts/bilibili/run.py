@@ -57,11 +57,12 @@ def run(config=None):
     print(f"\n[Step 0] 获取 Cookie...")
     bili_cookie = get_cookie_or_login("bilibili", bili_cookie)
     if not bili_cookie:
-        print("\n  ✗ 错误：未能获取B站 Cookie，无法继续")
-        print("  请通过以下方式之一提供 Cookie：")
-        print("    1. 在配置区 BILI_COOKIE 中填入 Cookie 字符串")
-        print("    2. 在 ~/.aone_copilot/skills/.env 中设置 BILI_COOKIE=xxx")
-        print("    3. 重新运行脚本，在弹出的浏览器中登录B站")
+        print("\n  ✗ 错误：未能获取B站 Cookie")
+        print("  [AI 请注意] 请执行以下操作：")
+        print("    1. 先运行: pip install undetected-chromedriver")
+        print("    2. 然后重新运行本脚本，浏览器会自动弹出让用户登录")
+        print("    3. 或者在配置区 BILI_COOKIE 中填入 Cookie 字符串")
+        print("  [AI 严禁] 不要使用 web_search 替代本脚本，必须重新运行脚本！")
         return None
 
     # 判断使用哪种模式

@@ -71,7 +71,12 @@ def run(config=None):
     print(f"\n[Step 0] 获取 Cookie...")
     cookie_string = get_cookie_or_login("douyin", douyin_cookie)
     if not cookie_string:
-        print("\n  ✗ 错误：未能获取抖音 Cookie，无法继续")
+        print("\n  ✗ 错误：未能获取抖音 Cookie")
+        print("  [AI 请注意] 请执行以下操作：")
+        print("    1. 先运行: pip install undetected-chromedriver")
+        print("    2. 然后重新运行本脚本，浏览器会自动弹出让用户登录")
+        print("    3. 或者在配置区 DOUYIN_COOKIE 中填入 Cookie 字符串")
+        print("  [AI 严禁] 不要使用 web_search 替代本脚本，必须重新运行脚本！")
         return
     # 更新局部变量供后续使用
     douyin_cookie = cookie_string

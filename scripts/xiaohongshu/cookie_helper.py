@@ -5,6 +5,7 @@ Cookie 自动获取助手
 """
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -116,8 +117,14 @@ def _login_and_extract_cookie(config: dict) -> str:
     try:
         import undetected_chromedriver as uc
     except ImportError:
-        print("  ✗ 缺少 undetected-chromedriver，请先安装：pip install undetected-chromedriver")
-        return ""
+        print("  ⚠️ 缺少 undetected-chromedriver，正在自动安装...")
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "undetected-chromedriver", "-q"])
+        try:
+            import undetected_chromedriver as uc
+        except ImportError:
+            print("  ✗ 自动安装失败，请手动执行：pip install undetected-chromedriver")
+            return ""
 
     platform_name = config["name"]
     login_url = config["login_url"]
